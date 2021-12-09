@@ -1,0 +1,173 @@
+<!-- http://urbanqee.com/webutil/balloon-line/balloon-stylesheet-line.html -->
+<!-- https://nakox.jp/web/coding/chat_line_css -->
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <title>Chatアプリ</title>
+    <script src="js/jquery-2.1.3.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/ui/1.10.3/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+
+</head>
+
+<body>
+
+    <!-- コンテンツ表示画面 -->
+    <header>
+        <h1>LINE</h1>
+        <button id="deleteAll">全て削除</button>
+        <button id="resetUserId">UserIDをリセット</button>
+    </header>
+    <main>
+        <div id="message-area">
+        </div>
+        <div id="input-container">
+            <div>
+                <p>名前: </p>
+                <input type="text" id="userName">
+                <p>メッセージ: </p>
+                <textarea name="" id="message" cols="30" rows="10"></textarea>
+            </div>
+            <div>
+                <button id="send">送信 (Ctrl + Enter)</button>
+            </div>
+        </div>
+
+    </main>
+    <div>
+    </div>
+
+    <!--/ コンテンツ表示画面 -->
+
+    <!-- JQuery -->
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script> -->
+    <!-- JQuery -->
+
+    <!--** 以下Firebase **-->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+        import { getDatabase, ref, push, set, onChildAdded, remove, onChildRemoved }
+            from "https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.0/firebase-database.min.js";
+
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "",
+            authDomain: "gsapp-c3f1d.firebaseapp.com",
+            projectId: "gsapp-c3f1d",
+            storageBucket: "gsapp-c3f1d.appspot.com",
+            messagingSenderId: "943355712906",
+            appId: "1:943355712906:web:01b894f2b57e68a7d9e473"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+
+        // 以下追加部分
+        const db = getDatabase(app);
+        const dbRef = ref(db, "chat");
+
+        // ローカルストレージからUserIdとの確認
+        let userId = localStorage.getItem("userId");
+        if (userId === "") {
+            SaveNewUniqueId();
+        }
+        let userName = localStorage.getItem("userName");
+        $("#userName").val(userName);
+
+        // ユニークなUserIdを発行
+        function SaveNewUniqueId() {
+            var strong = 1000;
+            userId = new Date().getTime().toString(16) + Math.floor(strong * Math.random()).toString(16);
+            localStorage.setItem('userId', userId);
+            console.log(userId);
+        }
+
+        // 送信時の処理(送信ボタンをクリック)
+        $("#send").on("click", function () {
+            Send();
+        });
+
+        // 送信時の処理(Ctrl ＋ Enter)
+        $("#message").on("keydown", function (e) {
+            if (e.keyCode === 13 && event.ctrlKey) {
+                Send();
+            }
+        });
+
+        // 削除時ボタンを押した時の処理（全てDBを削除し、message-areaをリセット）
+        $("#deleteAll").on("click", function () {
+            remove(dbRef);
+            $("#message-area").text("");
+        });
+
+        // UserIDのリセットボタンを押した時の処理（userIdを再発行し、画面を更新）
+        $("#resetUserId").on("click", function () {
+            SaveNewUniqueId();
+            location.reload();
+        });
+
+        // 送信ボタンクリック時の動作（DBへ保存し、userNameをlocalStorageに保存）
+        function Send() {
+            const userName = $("#userName").val();
+            const message = $("#message").val();
+            const msg = {
+                userName: userName,
+                message: message,
+                userId: userId,
+            };
+            // 名前と値が同じであれば以下の省略した書き方もできる
+            // const msg = {userName, message};
+            const newPostRef = push(dbRef);
+            set(newPostRef, msg);
+            $("#message").val("");
+            localStorage.setItem('userName', userName);
+        }
+
+        // 画面更新時・DB追加時の処理
+        onChildAdded(dbRef, function (data) {
+            const value = data.val();
+
+            // 配置位置を右にするか左にするか設定
+            let position;
+            let color;
+            if (value.userId == userId) {
+                position = "potision-right";
+                color = "background-right";
+            }
+            else {
+                position = "potision-left";
+                color = "background-left";
+            }
+
+            // htmlを更新（メッセージを追加していく）
+            let h = '<div class = "message-box">'
+            h += '<p class = "userName ' + position + '">';
+            h += value.userName;
+            h += '</p>';
+            // h += '<p class = "userName ' + position + '">';
+            // h += value.userId;
+            // h += '</p>';
+            h += '<p class = "message ' + position + ' ' + color + '">';
+            h += value.message;
+            h += '</p>';
+            h += '</div>';
+
+            $("#message-area").append(h);
+
+            // 一番下までスクロールする
+            $('#message-area').animate(cancelAnimationFrame);
+            $('#message-area').animate({ scrollTop: $('#message-area')[0].scrollHeight }, 'fast');
+        })
+
+    </script>
+
+</body>
+
+</html>
